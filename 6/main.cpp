@@ -116,6 +116,13 @@ auto partTwo(const std::string& filename) -> void {
     auto ops = std::queue<char>();
 
     for (auto line = std::string(); std::getline(input, line);) {
+        bool lastLine = std::ranges::find_if(line, [](char c){return c == '+' or c == '*';}) != line.end();
+
+        if (lastLine) {
+            std::ranges::remove(line, ' ');
+            ops = std::string_view(line) | std::ranges::to<std::queue<char>>();
+            break;
+        }
         context.push_back(line);
         if (maxSize < line.size())
             maxSize = line.size();
@@ -142,10 +149,7 @@ auto partTwo(const std::string& filename) -> void {
 
         if (!only_spaces) {
             auto num = std::atoi(stringNum.c_str());
-            if (sum == 0)
-                sum = num;
-            else
-                sum = doOperation(sum, num, op);
+            sum = doOperation(sum, num, op);
         } else {
             op = ops.front();
             ops.pop();
@@ -160,8 +164,12 @@ auto partTwo(const std::string& filename) -> void {
 
 auto doOperation(long a, long b, char op) -> long{
     switch (op) {
-        case '+': return a + b;
-        case '*': return a * b;
+        case '+':
+            return a + b;
+        case '*':
+            if (a == 0)
+                return b;
+            return a * b;
         default:
             fmt::println(std::cerr, "This shouldn't happen operation not recognised: {}", op);
             return 0;
