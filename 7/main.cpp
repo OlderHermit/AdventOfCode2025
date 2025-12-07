@@ -4,6 +4,7 @@
 #include <ranges>
 #include <set>
 #include <map>
+#include <vector>
 
 #include "fmt/core.h"
 #include "fmt/ranges.h"
@@ -69,6 +70,38 @@ auto partTwo(const std::string& filename) -> void {
     }
     fmt::println("{}", counter);
 }
+
+auto partTwoImproved(const std::string& filename) -> void {
+    auto input = std::ifstream(filename);
+    auto line = std::string();
+    long counter = 0;
+    std::getline(input, line);
+    auto nodes = std::vector<int>(line.size());
+
+    nodes[line.find('S')] = 1;
+
+    while (std::getline(input, line)) {
+        if (!line.contains('^'))
+            continue;
+
+        auto newNodes = std::vector<int>();
+
+        for (auto [i, c] : line | std::views::enumerate) {
+            if (c == '^' and nodes[i] != 0) {
+                newNodes[i+1] += nodes[i];
+                newNodes[i-1] += nodes[i];
+            } else if (nodes[i] != 0) {
+                newNodes[i] += nodes[i];
+            }
+        }
+        nodes = newNodes;
+    }
+    for (auto v: nodes) {
+        counter += v;
+    }
+    fmt::println("{}", counter);
+}
+
 
 auto main() -> int {
     // partOne("../7/data.txt");
