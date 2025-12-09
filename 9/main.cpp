@@ -96,16 +96,18 @@ auto partTwo(const std::string& filename) -> void {
         long low = std::min(start.y, stop.y);
         long high = std::max(start.y, stop.y);
 
-        long min = rows[low - minY].first;
-        long max = rows[low - minY].second;
+        long min = std::min(start.x, stop.x);
+        long max = std::max(start.x, stop.x);
 
-        for (long i = low; i < high; i++) {
+        bool correct = true;
+        for (long i = low; i <= high; i++) {
             auto [testMin, testMax] = rows[i - minY];
-            min = std::max(min, testMin);
-            max = std::min(max, testMax);
+            if(min < testMin or max > testMax) {
+                correct = false;
+                break;
+            }
         }
-
-        if (std::max(start.x, stop.x) <= max and std::min(start.x, stop.x) >= min) {
+        if (correct) {
             fmt::println("{}", start.box(stop));
             fmt::println("{}, {} - {}, {}", start.x, start.y, stop.x, stop.y);
             break;
