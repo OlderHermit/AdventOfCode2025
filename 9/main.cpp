@@ -117,6 +117,7 @@ auto partTwo(const std::string& filename) -> void {
 
 auto main() -> int {
     // partOne("../9/data.txt");
-    partTwo("../9/example.txt");
+    // partTwo("../9/example.txt");
+
     partTwo("../9/data.txt");
 }
