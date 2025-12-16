@@ -5,13 +5,17 @@
 #include <fmt/ranges.h>
 #include <fstream>
 #include <map>
+#include <numeric>
 #include <ranges>
 #include <set>
 #include <sstream>
 #include <vector>
 
-auto add(const std::vector<int>& first, const std::vector<int>& second) -> std::vector<int>;
-auto isIndexValid(const std::vector<int>& jolts, const std::vector<int>& test)-> bool;
+auto solveCaseFromPartTwo(std::vector<int> jolts, const std::vector<std::vector<int>>& buttons) -> long;
+auto divVectorBy2(std::vector<int>& vec1) -> void;
+auto subVectors(std::vector<int>& vec1, const std::vector<int>& vec2) -> void;
+auto findSolutionsToFirst(const std::vector<int>& patern, const std::vector<std::vector<int>>& buttons) -> std::vector<std::vector<int>>;
+auto xorVectors(std::vector<int>& vec1, const std::vector<int>& vec2) -> void;
 
 auto partOne(const std::string& filename) -> void {
     auto input = std::ifstream(filename);
@@ -74,6 +78,7 @@ auto partOne(const std::string& filename) -> void {
     fmt::println("final number of presses: {}", sum);
 
 }
+
 auto partTwo(const std::string& filename) -> void {
     auto input = std::ifstream(filename);
     long sum = 0l;
@@ -93,7 +98,6 @@ auto partTwo(const std::string& filename) -> void {
             auto stream = std::stringstream(s.substr(1, s.size()-2));
             char c;
             int v;
-            int mask = 0;
             buttons.emplace_back(lightsSize);
             while (stream.good()) {
                 stream >> v >> c;
@@ -109,59 +113,123 @@ auto partTwo(const std::string& filename) -> void {
             stream >> v >> c;
             jolts.push_back(v);
         }
-        // fmt::println("{}", jolts);
 
-        //solution
-        auto matrix = std::vector<std::vector<int>>();
-        for (const auto& button: buttons) {
-            matrix.push_back(button);
-        }
-        matrix.emplace_back(lightsSize, 1);
-
-        for (int i = 0; i < lightsSize; ++i) {
-
-        }
-
-        while (!lookup.contains(jolts)) {
-            auto states = std::map(lookup);
-            for (const auto& button: buttons) {
-                for (const auto& [ind, val]: lookup) {
-                    auto index = add(ind,  button);
-                    if (!isIndexValid(jolts, index))
-                        continue;
-                    if (!states.contains(index))
-                        states[index] = val + 1;
-                    else if (states[index] > val+1)
-                        states[index] = val+1;
-                }
-            }
-            lookup = states;
-            fmt::println("size: {}, last: {}", lookup.size(), *(--lookup.end()));
-        }
-        fmt::println("size: {}, last: {}, took: {}", lookup.size(), *(--lookup.end()), lookup[jolts]);
-        sum += lookup[jolts];
+        auto cur = solveCaseFromPartTwo(jolts, buttons);
+        fmt::println("solitions: {}", cur);
+        sum += cur;
     }
     fmt::println("final number of presses: {}", sum);
 
 }
 
-auto isIndexValid(const std::vector<int>& jolts, const std::vector<int>& test)-> bool {
-    for (int i = 0; i < jolts.size(); ++i) {
-        if (test[i] > jolts[i])
-            return false;
+auto recursive(std::vector<int> patern, std::vector<int> jolts, const std::vector<std::vector<int>>& buttons) -> long {
+    if (std::ranges::all_of(jolts, [](int e){return e == 0;}))
+        return 0;
+
+    if (std::ranges::all_of(jolts, [](int e){return e <= 0;}))
+        return 1000000l;
+
+    auto solutions = findSolutionsToFirst(patern, buttons);
+    auto counts = std::vector<long>(solutions.size(), 0);
+    for (auto [id, solution] : solutions | std::views::enumerate) {
+        auto tmpJolts = jolts;
+        for (int i = 0; i < solution.size(); ++i) {
+            if (solution[i] == 1) {
+                subVectors(tmpJolts, buttons[i]);
+                counts[id]++;
+            }
+        }
+        divVectorBy2(tmpJolts);
+        std::ranges::transform(tmpJolts, patern.begin(), [](int e){return e % 2;});
+        counts[id] += 2 * recursive(patern, tmpJolts, buttons);
     }
-    return true;
+    if (counts.empty())
+        return 1000000l;
+    return std::ranges::min(counts);
 }
 
-auto add(const std::vector<int>& first, const std::vector<int>& second) -> std::vector<int> {
-    auto result = std::vector<int>(first.size());
-    for (int i = 0; i < first.size(); ++i) {
-        result[i] = first[i] + second[i];
+auto solveCaseFromPartTwo(std::vector<int> jolts, const std::vector<std::vector<int>>& buttons) -> long {
+    auto patern = std::vector<int>(jolts.size());
+
+    std::ranges::transform(jolts, patern.begin(), [](int e){return e % 2;});
+
+    fmt::print("Patern {}\t", patern);
+    auto res = recursive(patern,jolts, buttons);
+    return res;
+}
+
+auto findSolutionsToFirst(const std::vector<int>& patern, const std::vector<std::vector<int>>& buttons) -> std::vector<std::vector<int>>{
+    long max = 1 << buttons.size();
+    auto results = std::vector<std::vector<int>>();
+    for (long i = 0; i < max; i++) {
+        auto testPatern = std::vector<int>(buttons.front().size(), 0);
+        for (int j = 0; j < buttons.size(); j++) {
+            if (i >> j & 1) {
+                xorVectors(testPatern, buttons[j]);
+            }
+        }
+
+        if (testPatern == patern) {
+            auto tmp = std::vector(buttons.size(),0);
+            for (int k = i, j = 0; k > 0; k >>= 1, j++) {
+                if (k & 1)
+                    tmp[j] = 1;
+            }
+            results.emplace_back(tmp);
+            // fmt::println("{:0{}b}", test, buttons.size());
+            // fmt::println("{}", tmp);
+        }
     }
-    return result;
+    return results;
+}
+// auto tmp(const std::vector<int>& patern, const std::vector<std::vector<int>>& buttons) {
+//     auto lookup = std::vector(1 << patern.size(), INT32_MAX);
+//     auto save = std::vector(1 << patern.size(), std::vector(buttons.size(), 0));
+//     for (int button: buttons) {
+//         lookup[button] = 1;
+//     }
+//     lookup[0] = 0;
+//     while (lookup[lights] == INT32_MAX) {
+//         auto states = std::vector<int>(lookup);
+//         for (int button: buttons) {
+//             for (auto [ind, val]: lookup | std::views::enumerate) {
+//                 if (val == INT32_MAX)
+//                     continue;
+//                 auto index = ind ^ button;
+//                 if (states[index] > val+1)
+//                     states[index] = val+1;
+//             }
+//         }
+//         lookup = states;
+//     }
+//     fmt::println("{} took: {}", lightsString, lookup[lights]);
+//     sum += lookup[lights];
+// }
+
+auto xorVectors(std::vector<int>& vec1, const std::vector<int>& vec2) -> void {
+    for (int i = 0; i < vec1.size(); ++i) {
+        vec1[i] ^= vec2[i];
+    }
+}
+
+auto subVectors(std::vector<int>& vec1, const std::vector<int>& vec2) -> void {
+    for (int i = 0; i < vec1.size(); ++i) {
+        vec1[i] -= vec2[i];
+    }
+}
+
+auto divVectorBy2(std::vector<int>& vec1) -> void {
+    for (int i = 0; i < vec1.size(); ++i) {
+        vec1[i] /= 2;
+    }
 }
 
 auto main() -> int {
     // partOne("../10/data.txt");
+    // partTwo("../10/example.txt");
+    //34_016_159 too much
+    //16394 too low
+    //16632 too high
+    //VERY SLOW ~ 15 min (due to brute force for paterns)
     partTwo("../10/data.txt");
 }
